@@ -1,0 +1,24 @@
+services:
+  oauth-server:
+    build: .
+    ports:
+      - "2444:2444"
+    environment:
+      - NODE_ENV=production
+      - PORT=2444
+    volumes:
+      - ./db:/app/db
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2444/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - oauth-network
+
+networks:
+  oauth-network:
+    driver: bridge

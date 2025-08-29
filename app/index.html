@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Authentication Portal</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1 data-i18n="app.title">OAuth Portal</h1>
+            </div>
+            
+            <!-- User Info (when logged in) -->
+            <div class="user-info" id="userInfo" style="display: none;">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="user-details">
+                        <h3 class="user-name" id="userName"></h3>
+                        <p class="user-email" id="userEmail"></p>
+                        <div class="user-status">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <span data-i18n="user.logged_in">Đã đăng nhập</span>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="btn btn-outline" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span data-i18n="user.logout">Đăng xuất</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <div class="language-selector">
+                    <select id="languageSelect" onchange="setLanguage(this.value)">
+                        <option value="vi">🇻🇳 Tiếng Việt</option>
+                        <option value="en">🇺🇸 English</option>
+                        <option value="fr">🇫🇷 Français</option>
+                    </select>
+                </div>
+                <div class="status-indicator" id="serverStatus">
+                    <i class="fas fa-circle"></i>
+                    <span id="statusText" data-i18n="status.checking">Checking server...</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Tab Navigation -->
+            <nav class="tab-navigation">
+                <button class="tab-btn active" onclick="showTab('login')">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span data-i18n="tab.login">Đăng nhập</span>
+                </button>
+                <button class="tab-btn" onclick="showTab('register')">
+                    <i class="fas fa-user-plus"></i>
+                    <span data-i18n="tab.register">Đăng ký</span>
+                </button>
+                <button class="tab-btn" onclick="showTab('apps')">
+                    <i class="fas fa-apps"></i>
+                    <span data-i18n="tab.apps">Ứng dụng</span>
+                </button>
+            </nav>
+
+            <!-- Server Offline Message -->
+            <div class="offline-message" id="offlineMessage" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3 data-i18n="offline.title">Server không khả dụng</h3>
+                <p data-i18n="offline.message">Vui lòng kiểm tra lại kết nối hoặc liên hệ quản trị viên.</p>
+                <div class="offline-button-container">
+                    <button onclick="manualHealthCheck()" class="btn btn-primary">
+                        <i class="fas fa-sync-alt"></i>
+                        <span data-i18n="offline.retry">Kiểm tra lại</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Login Tab -->
+            <div class="tab-content active" id="loginTab">
+                <div class="auth-container">
+                    <h2 data-i18n="login.title">Đăng nhập vào hệ thống</h2>
+                    
+                    <!-- Local Login Form -->
+                    <form class="auth-form" id="loginForm">
+                        <div class="form-group">
+                            <label for="loginEmail" data-i18n="login.email">Email</label>
+                            <div class="input-group">
+                                <i class="fas fa-envelope"></i>
+                                <input type="email" id="loginEmail" name="email" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="loginPassword" data-i18n="login.password">Mật khẩu</label>
+                            <div class="input-group">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="loginPassword" name="password" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span data-i18n="login.submit">Đăng nhập</span>
+                        </button>
+                    </form>
+
+                    <div class="divider">
+                        <span data-i18n="login.or">HOẶC</span>
+                    </div>
+
+                    <!-- Social Login Buttons -->
+                    <div class="social-login">
+                        <button class="btn btn-google" onclick="loginWithGoogle()">
+                            <i class="fab fa-google"></i>
+                            <span data-i18n="login.google">Đăng nhập với Google</span>
+                        </button>
+                        
+                        <button class="btn btn-facebook" onclick="loginWithFacebook()">
+                            <i class="fab fa-facebook-f"></i>
+                            <span data-i18n="login.facebook">Đăng nhập với Facebook</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Register Tab -->
+            <div class="tab-content" id="registerTab">
+                <div class="auth-container">
+                    <h2 data-i18n="register.title">Tạo tài khoản mới</h2>
+                    
+                    <form class="auth-form" id="registerForm">
+                        <div class="form-group">
+                            <label for="registerName" data-i18n="register.name">Họ và tên</label>
+                            <div class="input-group">
+                                <i class="fas fa-user"></i>
+                                <input type="text" id="registerName" name="name" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="registerEmail" data-i18n="register.email">Email</label>
+                            <div class="input-group">
+                                <i class="fas fa-envelope"></i>
+                                <input type="email" id="registerEmail" name="email" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="registerPassword" data-i18n="register.password">Mật khẩu</label>
+                            <div class="input-group">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="registerPassword" name="password" required minlength="6">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="confirmPassword" data-i18n="register.confirm_password">Xác nhận mật khẩu</label>
+                            <div class="input-group">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="confirmPassword" name="password2" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i>
+                            <span data-i18n="register.submit">Tạo tài khoản</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Apps Tab -->
+            <div class="tab-content" id="appsTab">
+                <div class="apps-container">
+                    <div class="apps-header">
+                        <h2 data-i18n="apps.title">Ứng dụng đã đăng ký</h2>
+                        <button class="btn btn-secondary" onclick="refreshApps()" id="refreshAppsBtn">
+                            <i class="fas fa-sync-alt"></i>
+                            <span data-i18n="apps.refresh">Làm mới</span>
+                        </button>
+                    </div>
+                    
+                    <div class="login-prompt" id="loginPrompt" style="display: none;">
+                        <i class="fas fa-user-lock"></i>
+                        <p data-i18n="apps.login_prompt">Vui lòng đăng nhập để xem danh sách ứng dụng của bạn.</p>
+                    </div>
+                    
+                    <div class="apps-list" id="appsList">
+                        <!-- Apps will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p data-i18n="ui.loading">Đang xử lý...</p>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="i18n.js"></script>
+    <script src="oauth.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
