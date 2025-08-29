@@ -67,11 +67,18 @@ body {
 
 .logo {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+.logo .logo-title {
+    display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.logo i {
+.logo .logo-title i {
     font-size: 2rem;
     color: #667eea;
 }
@@ -82,15 +89,24 @@ body {
     font-size: 1.8rem;
 }
 
+.server-status {
+    margin-top: 5px;
+}
+
 .status-indicator {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    font-size: 0.75rem;
     font-weight: 500;
+    width: fit-content;
+}
+
+.status-indicator i {
+    font-size: 0.6rem;
 }
 
 .status-indicator.online {
@@ -98,14 +114,26 @@ body {
     background: rgba(16, 185, 129, 0.1);
 }
 
+.status-indicator.online i {
+    color: #10b981;
+}
+
 .status-indicator.offline {
     color: #ef4444;
     background: rgba(239, 68, 68, 0.1);
 }
 
+.status-indicator.offline i {
+    color: #ef4444;
+}
+
 .status-indicator.checking {
     color: #f59e0b;
     background: rgba(245, 158, 11, 0.1);
+}
+
+.status-indicator.checking i {
+    color: #f59e0b;
 }
 
 /* Main Content */
@@ -814,15 +842,32 @@ body {
     }
     
     .logo {
+        gap: 5px;
+    }
+    
+    .logo-title {
         gap: 10px;
     }
     
-    .logo i {
+    .logo-title i {
         font-size: 1.5rem;
     }
     
     .logo h1 {
         font-size: 1.2rem;
+    }
+    
+    .server-status {
+        margin-top: 3px;
+    }
+    
+    .status-indicator {
+        padding: 3px 6px;
+        font-size: 0.7rem;
+    }
+    
+    .status-indicator i {
+        font-size: 0.55rem;
     }
     
     .main-content {

@@ -11,8 +11,16 @@
     <div class="container">
         <header class="header">
             <div class="logo">
-                <i class="fas fa-shield-alt"></i>
-                <h1 data-i18n="app.title">OAuth Portal</h1>
+                <div class="logo-title">
+                    <i class="fas fa-shield-alt"></i>
+                    <h1 data-i18n="app.title">OAuth Portal</h1>
+                </div>
+                <div class="server-status">
+                    <div class="status-indicator" id="serverStatus">
+                        <i class="fas fa-circle"></i>
+                        <span id="statusText" data-i18n="status.checking">Checking server...</span>
+                    </div>
+                </div>
             </div>
             
             <!-- User Info (when logged in) -->
@@ -45,10 +53,6 @@
                         <option value="en">🇺🇸 English</option>
                         <option value="fr">🇫🇷 Français</option>
                     </select>
-                </div>
-                <div class="status-indicator" id="serverStatus">
-                    <i class="fas fa-circle"></i>
-                    <span id="statusText" data-i18n="status.checking">Checking server...</span>
                 </div>
             </div>
         </header>
