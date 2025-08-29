@@ -490,7 +490,7 @@ async function loadUserApps() {
             // Token expired
             clearStoredAuth();
             showToast('error', t('msg.token_expired'));
-            displayNoAppsMessage('apps_load_failed', 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            displayNoAppsMessage('apps_load_failed');
             return false;
         } else {
             return false;
@@ -727,7 +727,7 @@ async function validateTokenAndSetUser(token, cachedUserData) {
     }
 
     if (!serverOnline && !cachedUser) {
-        throw new Error('Server không khả dụng và không có thông tin user đã lưu');
+        throw new Error('Server is unavailable and no cached user data found');
     }
 
     try {
@@ -763,7 +763,7 @@ async function validateTokenAndSetUser(token, cachedUserData) {
             }
         } else if (response.status === 401) {
             // Token is invalid/expired
-            throw new Error('Token hết hạn hoặc không hợp lệ');
+            throw new Error('Token expired or invalid');
         } else {
             throw new Error(`Server error: ${response.status}`);
         }
@@ -775,20 +775,20 @@ async function validateTokenAndSetUser(token, cachedUserData) {
             if (cachedUser) {
                 currentUser = cachedUser;
                 updateUserInterface();
-                showToast('warning', 'Không thể kiểm tra token. Đang sử dụng thông tin đã lưu.');
+                showToast('warning', t('msg.token_check_failed'));
                 return;
             }
         }
         
         // For other errors, if we have cached user data and it's not a 401, 
         // still use it temporarily
-        if (cachedUser && !error.message.includes('401') && !error.message.includes('hết hạn')) {
+        if (cachedUser && !error.message.includes('401') && !error.message.includes('expired') && !error.message.includes('invalid')) {
             currentUser = cachedUser;
             updateUserInterface();
             
             // Show a warning that authentication might be stale
             setTimeout(() => {
-                showToast('warning', 'Không thể xác thực token. Vui lòng đăng nhập lại nếu gặp lỗi.');
+                showToast('warning', t('msg.token_auth_failed'));
             }, 2000);
         } else {
             // Token is definitely invalid or we have no cached data
