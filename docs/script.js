@@ -62,27 +62,30 @@ async function initializeApp() {
     // Initialize language first
     initializeLanguage();
     
+    // Check server health initially
+    await checkServerHealth(false);
+
     // Check if user is already logged in
     const token = localStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
     const userData = localStorage.getItem(CONFIG.STORAGE_KEYS.USER);
 
-    if (token && userData) {
+    if (token) {
+        // We have a token, let's validate it and get user info
         try {
-            currentUser = JSON.parse(userData);
-            updateUserInterface();
+            await validateTokenAndSetUser(token, userData);
         } catch (error) {
-            console.error('Error parsing stored user data:', error);
+            console.error('Error validating token:', error);
             clearStoredAuth();
+            setTimeout(() => {
+                showTab('login');
+            }, 100);
         }
     } else {
-        // If not logged in, ensure showing login tab
+        // If no token, ensure showing login tab
         setTimeout(() => {
             showTab('login');
         }, 100);
     }
-
-    // Check server health initially
-    await checkServerHealth(false);
 
     // Start periodic health check
     startPeriodicHealthCheck();
@@ -165,6 +168,20 @@ async function checkServerHealth(silent = false) {
                 if (!silent) {
                     showToast('success', t('msg.server_recovered'));
                 }
+                
+                // If we have a token but currentUser is null (server was offline during init),
+                // try to validate token now that server is back online
+                const token = localStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
+                const userData = localStorage.getItem(CONFIG.STORAGE_KEYS.USER);
+                if (token && !currentUser) {
+                    try {
+                        await validateTokenAndSetUser(token, userData);
+                    } catch (error) {
+                        console.error('Failed to validate token after server recovery:', error);
+                        clearStoredAuth();
+                    }
+                }
+                
                 // Force update UI and reload apps
                 updateUIBasedOnServerStatus();
                 // If we're on apps tab, refresh the apps list
@@ -690,6 +707,96 @@ function updateTabsVisibility(isLoggedIn) {
     }
 }
 
+// Validate token and set user information
+async function validateTokenAndSetUser(token, cachedUserData) {
+    // If we have cached user data, try to parse it first
+    let cachedUser = null;
+    if (cachedUserData) {
+        try {
+            cachedUser = JSON.parse(cachedUserData);
+        } catch (error) {
+            console.error('Error parsing cached user data:', error);
+        }
+    }
+
+    // If server is offline, use cached data if available
+    if (!serverOnline && cachedUser) {
+        currentUser = cachedUser;
+        updateUserInterface();
+        return;
+    }
+
+    if (!serverOnline && !cachedUser) {
+        throw new Error('Server không khả dụng và không có thông tin user đã lưu');
+    }
+
+    try {
+        // Server is online, validate token
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const response = await fetch(`${CONFIG.SERVER_URL}/api/auth`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                // Token is valid, use server data
+                currentUser = data.data;
+                
+                // Update localStorage with fresh user data
+                localStorage.setItem(CONFIG.STORAGE_KEYS.USER, JSON.stringify(data.data));
+                localStorage.setItem(CONFIG.STORAGE_KEYS.TOKEN, token);
+                
+                updateUserInterface();
+            } else {
+                throw new Error('Invalid token response from server: ' + JSON.stringify(data));
+            }
+        } else if (response.status === 401) {
+            // Token is invalid/expired
+            throw new Error('Token hết hạn hoặc không hợp lệ');
+        } else {
+            throw new Error(`Server error: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Token validation error:', error);
+        
+        if (error.name === 'AbortError') {
+            // Timeout - if we have cached data, use it
+            if (cachedUser) {
+                currentUser = cachedUser;
+                updateUserInterface();
+                showToast('warning', 'Không thể kiểm tra token. Đang sử dụng thông tin đã lưu.');
+                return;
+            }
+        }
+        
+        // For other errors, if we have cached user data and it's not a 401, 
+        // still use it temporarily
+        if (cachedUser && !error.message.includes('401') && !error.message.includes('hết hạn')) {
+            currentUser = cachedUser;
+            updateUserInterface();
+            
+            // Show a warning that authentication might be stale
+            setTimeout(() => {
+                showToast('warning', 'Không thể xác thực token. Vui lòng đăng nhập lại nếu gặp lỗi.');
+            }, 2000);
+        } else {
+            // Token is definitely invalid or we have no cached data
+            throw error;
+        }
+    }
+}
+
 function logout() {
     clearStoredAuth();
     currentUser = null;
@@ -708,6 +815,7 @@ function logout() {
 function clearStoredAuth() {
     localStorage.removeItem(CONFIG.STORAGE_KEYS.TOKEN);
     localStorage.removeItem(CONFIG.STORAGE_KEYS.USER);
+    currentUser = null; // Also clear the current user in memory
 }
 
 // Clear apps list and related UI
@@ -801,22 +909,58 @@ function formatDate(dateString) {
 // Handle page load
 window.addEventListener('load', function() {
     // No special handling needed as we use popup for OAuth
-    console.log('OAuth Portal loaded');
-    console.log('Token storage key:', CONFIG.STORAGE_KEYS.TOKEN);
-    console.log('Current token:', localStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN));
-    
-    // Add test function to global scope for debugging
-    window.testPopup = function() {
-        console.log('Testing popup functionality...');
-        const testPopup = window.open('about:blank', 'test', 'width=500,height=600');
-        if (testPopup) {
-            console.log('Popup test successful!');
-            testPopup.close();
-        } else {
-            console.log('Popup blocked!');
-        }
-    };
 });
+
+// Function to refresh token if needed (can be called from other parts of the app)
+async function refreshAuthenticationIfNeeded() {
+    const token = localStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
+    const userData = localStorage.getItem(CONFIG.STORAGE_KEYS.USER);
+    
+    if (token && !currentUser && serverOnline) {
+        try {
+            await validateTokenAndSetUser(token, userData);
+            return true;
+        } catch (error) {
+            console.error('Failed to refresh authentication:', error);
+            clearStoredAuth();
+            showTab('login');
+            return false;
+        }
+    }
+    return !!currentUser;
+}
+
+// Function to set token from external source (for cross-app integration)
+window.setAuthToken = async function(token) {
+    if (!token) {
+        throw new Error('Token is required');
+    }
+    
+    clearStoredAuth();
+    localStorage.setItem(CONFIG.STORAGE_KEYS.TOKEN, token);
+    
+    if (serverOnline) {
+        try {
+            await validateTokenAndSetUser(token, null);
+            return true;
+        } catch (error) {
+            clearStoredAuth();
+            throw error;
+        }
+    } else {
+        return true;
+    }
+};
+
+// Function to get current authentication status
+window.getAuthStatus = function() {
+    return {
+        isAuthenticated: !!currentUser,
+        user: currentUser,
+        hasToken: !!localStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN),
+        serverOnline: serverOnline
+    };
+};
 
 // Global error handler
 window.addEventListener('error', function(e) {
