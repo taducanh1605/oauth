@@ -697,8 +697,12 @@ body {
         text-align: center;
     }
     
+    .logo {
+        order: -1; /* Logo hiển thị trước trên mobile */
+        align-self: flex-start;
+    }
+    
     .user-info {
-        order: -1; /* Hiển thị user info trước logo trên mobile */
         width: 100%;
         justify-content: center;
     }
@@ -868,6 +872,19 @@ body {
     
     .status-indicator i {
         font-size: 0.55rem;
+    }
+    
+    /* Đảm bảo status icon có màu đúng trên mobile */
+    .status-indicator.online i {
+        color: #10b981 !important;
+    }
+    
+    .status-indicator.offline i {
+        color: #ef4444 !important;
+    }
+    
+    .status-indicator.checking i {
+        color: #f59e0b !important;
     }
     
     .main-content {
