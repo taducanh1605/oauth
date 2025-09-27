@@ -4,6 +4,9 @@ srv/db/
 # Ignore environment variables
 srv/.env
 
+# Ignore Docker images folder
+docker-image/
+
 # Node modules
 node_modules/
 
